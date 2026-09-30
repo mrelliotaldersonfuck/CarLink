@@ -1,0 +1,7 @@
+NEXT STEP — CARPLAY VIDEO
+
+Esta versão não contém um entitlement CarPlay Video inventado.
+
+Quando a equipe Apple Developer tiver a capacidade autorizada para o App ID do CarLink, configuraremos o entitlement e o provisioning profile no pipeline de assinatura.
+
+Até lá, esta versão serve para validar compilação, instalação no iPhone e o navegador WKWebView.
