@@ -32,7 +32,7 @@ struct DiagnosticsView: View {
                     Label("Executar", systemImage: "waveform.path.ecg")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(diagnostics.isRunning)
+                .disabled(false)
 
                 Button {
                     diagnostics.copyLogs()
