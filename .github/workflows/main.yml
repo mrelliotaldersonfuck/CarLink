@@ -1,0 +1,87 @@
+name: Build CarLink
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build CarLink
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Verify project
+        run: |
+          test -f project.yml
+          test -d CarLink
+          test -f CarLink/DiagnosticsModel.swift
+          test -f CarLink/DiagnosticsView.swift
+          echo "Project OK"
+
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate
+          test -f CarLink.xcodeproj/project.pbxproj
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project CarLink.xcodeproj \
+            -scheme CarLink \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: Verify application
+        run: |
+          APP="build/Build/Products/Release-iphoneos/CarLink.app"
+          test -d "$APP"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP/Info.plist"
+
+      - name: Package unsigned IPA
+        run: |
+          APP="build/Build/Products/Release-iphoneos/CarLink.app"
+
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP" Payload/CarLink.app
+
+          zip -r CarLink-unsigned.ipa Payload
+
+          rm -rf Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: CarLink-unsigned-ipa
+          path: CarLink-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload build
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: CarLink-build
+          path: build/
+          if-no-files-found: ignore
