@@ -4,28 +4,46 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>CarLink</string>
+
 	<key>CFBundleName</key>
 	<string>CarLink</string>
+
 	<key>CFBundleExecutable</key>
 	<string>CarLink</string>
+
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
 	<key>UILaunchScreen</key>
 	<dict/>
+
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
 	<key>UISceneConfigurations</key>
 	<dict>
 		<key>UIWindowSceneSessionRoleApplication</key>
@@ -37,6 +55,7 @@
 				<string>$(PRODUCT_MODULE_NAME).AppSceneDelegate</string>
 			</dict>
 		</array>
+
 		<key>CPTemplateApplicationSceneSessionRoleApplication</key>
 		<array>
 			<dict>
@@ -49,16 +68,19 @@
 			</dict>
 		</array>
 	</dict>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 	</dict>
+
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 	</dict>
+
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
