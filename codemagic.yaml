@@ -1,0 +1,51 @@
+workflows:
+  carlink-testflight:
+    name: CarLink TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: codemagic
+
+    environment:
+      xcode: latest
+      vars:
+        BUNDLE_ID: "com.carlink.CarLink"
+        XCODE_PROJECT: "CarLink.xcodeproj"
+        XCODE_SCHEME: "CarLink"
+        APP_STORE_APPLE_ID: "6819000403"
+
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.carlink.CarLink
+
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+          ls -la
+          test -d CarLink.xcodeproj
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
