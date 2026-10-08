@@ -1,0 +1,7 @@
+CarLink CarPlay Audio entitlement is now declared in CarLink/CarLink.entitlements.
+
+Before App Store/TestFlight distribution, enable the CarPlay Audio managed capability for this App ID in Apple Developer and regenerate/download the provisioning profile that includes com.apple.developer.carplay-audio.
+
+
+Configured Bundle Identifier: com.carlink.CarLink
+Use this exact App ID in Apple Developer, and regenerate the provisioning profile after CarPlay Audio is enabled.
