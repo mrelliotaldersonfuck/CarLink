@@ -15,10 +15,6 @@ workflows:
         XCODE_SCHEME: "CarLink"
         APP_STORE_APPLE_ID: "6819000403"
 
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.carlink.CarLink
-
     scripts:
       - name: Install XcodeGen
         script: |
