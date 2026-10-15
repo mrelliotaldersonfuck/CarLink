@@ -1,0 +1,90 @@
+workflows:
+  carlink-testflight:
+    name: CarLink TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: CarLink
+
+    environment:
+      groups:
+        - carlink
+      xcode: "27.0"
+      vars:
+        BUNDLE_ID: "com.carlink.CarLink"
+        XCODE_PROJECT: "CarLink.xcodeproj"
+        XCODE_SCHEME: "CarLink"
+        APP_STORE_APPLE_ID: "6819000403"
+
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+          ls -la
+          test -d CarLink.xcodeproj
+
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
+      - name: Fetch or create signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Report CarPlay entitlements in provisioning profile
+        script: |
+          # Informational only — never fails the build. CarLink ships with the
+          # CarPlay Audio capability today; CarPlay Video is reported if/when the
+          # profile includes it (after Apple approves it and the profile is
+          # regenerated, and the key is re-added to CarLink.entitlements).
+          python3 - <<'PY_CHECK'
+          import glob, plistlib, subprocess
+          paths = glob.glob('/Users/builder/Library/MobileDevice/Provisioning Profiles/*.mobileprovision') + glob.glob('/Users/builder/Library/Developer/Xcode/UserData/Provisioning Profiles/*.mobileprovision')
+          found = False
+          for path in paths:
+              try:
+                  raw = subprocess.check_output(['security', 'cms', '-D', '-i', path], stderr=subprocess.DEVNULL)
+                  profile = plistlib.loads(raw)
+                  ent = profile.get('Entitlements', {})
+                  ident = str(ent.get('application-identifier', ''))
+                  if ident.endswith('com.carlink.CarLink'):
+                      found = True
+                      print('CarPlay Audio in profile:', bool(ent.get('com.apple.developer.carplay-audio')))
+                      print('CarPlay Video in profile:', bool(ent.get('com.apple.developer.carplay-video')))
+                      break
+              except subprocess.CalledProcessError:
+                  continue
+          if not found:
+              print('No matching profile found at standard paths; xcode-project use-profiles handles signing.')
+          PY_CHECK
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

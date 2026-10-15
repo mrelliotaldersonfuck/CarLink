@@ -1,0 +1,29 @@
+CarLink 0.4.6 — CarPlay Audio now; CarPlay Video when approved
+
+Bundle ID: com.carlink.CarLink
+
+CURRENT STATE (ships to TestFlight today)
+  CarLink.entitlements requests ONLY:
+    com.apple.developer.carplay-audio = true
+  So the app signs and builds with your current CarPlay Audio capability and
+  the existing App Store provisioning profile. Codemagic no longer fails on a
+  missing video entitlement — it just reports which CarPlay capabilities the
+  profile has.
+
+WHEN APPLE APPROVES CARPLAY VIDEO FOR THIS BUNDLE ID
+  1. In Apple Developer, enable the CarPlay Video capability on the App ID.
+  2. Regenerate the App Store distribution provisioning profile (an older
+     audio-only profile does NOT contain the new entitlement and cannot sign
+     a binary that requests it).
+  3. Add this key back to CarLink/CarLink.entitlements:
+       <key>com.apple.developer.carplay-video</key>
+       <true/>
+  4. Push to GitHub and start a new Codemagic build.
+
+NOTES
+  - The video-in-car flow uses AVPlayer + AirPlay with CPPlaybackConfiguration
+    (CarPlay Video, iOS 27) and only offers video when the vehicle reports
+    supportsVideoPlayback and is parked.
+  - CarPlay shows only Apple's templates (grid, list, Now Playing). It cannot
+    render a web browser or arbitrary web video on the car screen. The full
+    browser runs on the iPhone; video reaches the car screen via AirPlay.
