@@ -2,20 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!--
-	  CarPlay Audio is enabled now so Codemagic can sign and ship to TestFlight
-	  with your current managed capability.
-
-	  CarPlay Video is intentionally NOT requested yet: a provisioning profile
-	  that lacks the video capability cannot sign a binary that requests it, so
-	  turning it on before Apple approves it would break the build. After Apple
-	  approves CarPlay Video for com.carlink.CarLink and you regenerate the
-	  App Store profile, add this key back:
-
-	    <key>com.apple.developer.carplay-video</key>
-	    <true/>
-	-->
 	<key>com.apple.developer.carplay-audio</key>
+	<true/>
+
+	<key>com.apple.developer.carplay-video</key>
 	<true/>
 </dict>
 </plist>
