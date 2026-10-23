@@ -1,0 +1,138 @@
+workflows:
+  carlink-testflight:
+    name: CarLink TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: CarLink
+
+    environment:
+      groups:
+        - carlink
+      xcode: "27.1"
+      vars:
+        BUNDLE_ID: "com.carlink.CarLink"
+        XCODE_PROJECT: "CarLink.xcodeproj"
+        XCODE_SCHEME: "CarLink"
+        APP_STORE_APPLE_ID: "6819000403"
+
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          set -e
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Set next TestFlight build number
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)"
+          if ! echo "$LATEST_BUILD_NUMBER" | grep -Eq '^[0-9]+$'; then
+            LATEST_BUILD_NUMBER=18
+          fi
+          NEXT_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
+          echo "Latest TestFlight build: $LATEST_BUILD_NUMBER"
+          echo "Next build: $NEXT_BUILD_NUMBER"
+          python3 - "$NEXT_BUILD_NUMBER" <<'PY_BUILD'
+          import re, sys, pathlib
+          p = pathlib.Path('project.yml')
+          s = p.read_text()
+          n = sys.argv[1]
+          s, count = re.subn(r'CURRENT_PROJECT_VERSION:\s*"[0-9]+"', f'CURRENT_PROJECT_VERSION: "{n}"', s, count=1)
+          if count != 1:
+              raise SystemExit('Could not update CURRENT_PROJECT_VERSION in project.yml')
+          p.write_text(s)
+          PY_BUILD
+
+      - name: Generate Xcode project
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          xcodegen generate
+          test -d "$XCODE_PROJECT"
+          echo "Commit: $CM_COMMIT"
+          grep -E 'CURRENT_PROJECT_VERSION|MARKETING_VERSION|PRODUCT_BUNDLE_IDENTIFIER' project.yml
+
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
+      - name: Fetch or create signing files
+        script: |
+          set -e
+          test -n "$CERTIFICATE_PRIVATE_KEY"
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+
+      - name: Set up code signing
+        script: |
+          cd "$CM_BUILD_DIR"
+          xcode-project use-profiles
+
+      - name: Verify CarPlay entitlements in provisioning profile
+        script: |
+          python3 - <<'PY_CHECK'
+          import glob, plistlib, subprocess, sys
+
+          paths = (
+              glob.glob('/Users/builder/Library/MobileDevice/Provisioning Profiles/*.mobileprovision') +
+              glob.glob('/Users/builder/Library/Developer/Xcode/UserData/Provisioning Profiles/*.mobileprovision')
+          )
+
+          matching = []
+          for path in paths:
+              try:
+                  raw = subprocess.check_output(['security', 'cms', '-D', '-i', path], stderr=subprocess.DEVNULL)
+                  profile = plistlib.loads(raw)
+              except Exception:
+                  continue
+
+              ent = profile.get('Entitlements', {})
+              ident = str(ent.get('application-identifier', ''))
+              if ident.endswith('com.carlink.CarLink'):
+                  matching.append((path, profile, ent))
+
+          if not matching:
+              print('WARNING: matching profile not found in standard paths; continuing because xcode-project use-profiles may still resolve it.')
+              sys.exit(0)
+
+          path, profile, ent = matching[-1]
+          missing = []
+          for key in ('com.apple.developer.carplay-audio', 'com.apple.developer.carplay-video'):
+              if not ent.get(key):
+                  missing.append(key)
+
+          print('Profile:', profile.get('Name', path))
+          print('CarPlay Audio:', bool(ent.get('com.apple.developer.carplay-audio')))
+          print('CarPlay Video:', bool(ent.get('com.apple.developer.carplay-video')))
+
+          if missing:
+              print('ERROR: provisioning profile is missing: ' + ', '.join(missing))
+              sys.exit(1)
+          PY_CHECK
+
+      - name: Build IPA
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
