@@ -1,0 +1,72 @@
+workflows:
+  # Retain the workflow ID already selected in the user's Codemagic app.
+  # This workflow signs and publishes; its ID is kept only for compatibility.
+  carlink-validate:
+    name: CarLink TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    integrations:
+      app_store_connect: CarLink
+    environment:
+      groups:
+        - carlink
+      xcode: "27.1"
+      vars:
+        BUNDLE_ID: com.carlink.CarLink
+        XCODE_PROJECT: CarLink.xcodeproj
+        XCODE_SCHEME: CarLink
+        APP_STORE_APPLE_ID: "6819000403"
+    scripts:
+      - name: Preparar versão e projeto
+        script: |
+          set -euo pipefail
+          python3 scripts/test_prepare_build.py
+          python3 scripts/test_verify_ipa.py
+          python3 scripts/prepare-build.py
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate
+          python3 scripts/validate-project.py
+      - name: Testar o núcleo
+        script: swift test --package-path Packages/CarLinkCore
+      - name: Gerar e decodificar vídeo do experimento
+        script: |
+          set -euo pipefail
+          mkdir -p build/validation
+          swiftc -swift-version 5 -target arm64-apple-macosx14.0 -parse-as-library \
+            CarLink/Services/ProbeMovieFactory.swift scripts/check-probe-movie.swift \
+            -o build/validation/check-probe-movie
+          build/validation/check-probe-movie
+      - name: Inicializar keychain
+        script: keychain initialize
+      - name: Buscar ou criar assinatura automaticamente
+        script: |
+          set -euo pipefail
+          test -n "${CERTIFICATE_PRIVATE_KEY:-}" || {
+            echo 'CERTIFICATE_PRIVATE_KEY não está disponível no grupo carlink.'
+            exit 1
+          }
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+      - name: Adicionar certificados à keychain
+        script: keychain add-certificates
+      - name: Aplicar os perfis de assinatura
+        script: xcode-project use-profiles
+      - name: Gerar IPA assinado para TestFlight
+        script: |
+          set -euo pipefail
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+      - name: Conferir assinatura e entitlements do IPA
+        script: python3 scripts/verify-ipa.py
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - build/ios/xcarchive/*.xcarchive/dSYMs/*.dSYM
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false

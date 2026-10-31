@@ -1,0 +1,46 @@
+name: CarLink
+options:
+  bundleIdPrefix: com.carlink
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "27.1"
+  developmentLanguage: pt-BR
+settings:
+  base:
+    # Swift 5 language mode; 5.9 is a compiler release, not a valid language mode.
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CURRENT_PROJECT_VERSION: "45"
+    MARKETING_VERSION: "0.6.0"
+    PRODUCT_BUNDLE_IDENTIFIER: com.carlink.CarLink
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SUPPORTS_MACCATALYST: NO
+    GENERATE_INFOPLIST_FILE: NO
+    SWIFT_STRICT_CONCURRENCY: targeted
+    VERSIONING_SYSTEM: apple-generic
+packages:
+  CarLinkCore:
+    path: Packages/CarLinkCore
+targets:
+  CarLink:
+    type: application
+    platform: iOS
+    sources:
+      - path: CarLink
+        excludes:
+          - Info.plist
+          - CarLink.entitlements
+    settings:
+      base:
+        INFOPLIST_FILE: CarLink/Info.plist
+        CODE_SIGN_ENTITLEMENTS: CarLink/CarLink.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: CarLinkCore
+    scheme:
+      gatherCoverageData: false
+      environmentVariables:
+        OS_ACTIVITY_MODE: default
